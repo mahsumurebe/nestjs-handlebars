@@ -81,6 +81,11 @@ export class HandlebarsService implements OnApplicationBootstrap {
     }
   }
 
+  translate(key: string, options?: i18next.TOptions) {
+    this.debug(`Getting translation for key: ${key} with options: `, options);
+    return this.i18n.t(key, options);
+  }
+
   private getKey(parsedFilePath: path.ParsedPath, separator: string): string {
     const out: string[] = [];
     if (parsedFilePath.dir) {
@@ -103,12 +108,14 @@ export class HandlebarsService implements OnApplicationBootstrap {
 
       const resources: i18next.Resource = {};
 
+      const languages = new Set<string>();
       for (const directory of i18nOptions.directories!) {
-        const languages = glob.sync(path.join(directory, '*', path.sep), {
+        const languagePaths = glob.sync(path.join(directory, '*', path.sep), {
           dot: false,
         });
-        for (const langDirPath of languages) {
+        for (const langDirPath of languagePaths) {
           const language = path.relative(directory, langDirPath);
+          languages.add(language);
           this.debug(`Processing i18n resources for language: ${language}`);
           const files = glob.sync(path.join(langDirPath, '**', '*.json'));
           for (const file of files) {

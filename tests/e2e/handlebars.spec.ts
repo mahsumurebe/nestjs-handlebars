@@ -60,6 +60,21 @@ describe('Handlebars', () => {
           'value-tr-1 Locale: tr',
         );
       });
+      it('should translate mail-with-locale template with default locale', () => {
+        expect(mailService.getTranslate('mail.param1').trim()).toBe(
+          'value-en-1',
+        );
+      });
+      it('should translate mail-with-locale template with en locale', () => {
+        expect(mailService.getTranslate('mail.param1', 'en').trim()).toBe(
+          'value-en-1',
+        );
+      });
+      it('should translate mail-with-locale template with tr locale', () => {
+        expect(mailService.getTranslate('mail.param1', 'tr').trim()).toBe(
+          'value-tr-1',
+        );
+      });
     });
   });
   describe('Sms', () => {
