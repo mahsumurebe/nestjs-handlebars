@@ -11,7 +11,10 @@ import { SmsModule } from './modules/sms/sms.module';
         i18n: {
           use: true,
           i18nHelperName: 'i18n',
+          fallbackLng: 'en',
+          directories: [__dirname + '/global-locale'],
         },
+        partialDirectories: [__dirname + '/global-partials'],
       }),
     }),
     MailModule,

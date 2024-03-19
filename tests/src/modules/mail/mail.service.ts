@@ -24,4 +24,15 @@ export class MailService {
   compileMailWithPartialWithParam(param: { name: string }) {
     return this.handlebars.compile('mail-with-partial-with-param', param);
   }
+
+  getTranslate(key: string, locale?: string) {
+    return this.handlebars.translate(
+      key,
+      locale
+        ? {
+            lng: locale,
+          }
+        : undefined,
+    );
+  }
 }
