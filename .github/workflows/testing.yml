@@ -21,6 +21,6 @@ jobs:
         with:
           node-version: 18
       - name: Install dependencies
-        run: pnpm i
+        run: npm i
       - name: Test
-        run: pnpm run test
+        run: npm run test
