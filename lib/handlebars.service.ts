@@ -132,8 +132,6 @@ export class HandlebarsService implements OnApplicationBootstrap {
         }
       }
 
-      console.log(JSON.stringify(resources, null, 2));
-
       this.i18n = i18next.createInstance();
       await this.i18n.init({
         ...i18nOptions,
