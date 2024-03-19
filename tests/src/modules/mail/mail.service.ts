@@ -9,6 +9,10 @@ export class MailService {
     return this.handlebars.compile('mail-test');
   }
 
+  compileMailSubFolder(locale?: string) {
+    return this.handlebars.compile(`sub-folder/mail-sub-folder`, {}, locale);
+  }
+
   compileMailWithLocale(locale?: string) {
     return this.handlebars.compile(`mail-with-locale`, {}, locale);
   }
