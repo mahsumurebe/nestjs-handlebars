@@ -24,6 +24,11 @@ describe('Handlebars', () => {
     it('should compile mail-test', () => {
       expect(mailService.compileMailTest().trim()).toBe('Test1');
     });
+    it('should compile mail-sub-folder', () => {
+      expect(mailService.compileMailSubFolder().trim()).toBe(
+        'It is a sub-folder',
+      );
+    });
 
     describe('Partials', () => {
       it('should compile mail-with-partial', () => {
