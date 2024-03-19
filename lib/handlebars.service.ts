@@ -7,10 +7,7 @@ import * as debug from 'debug';
 import * as _ from 'lodash';
 import * as glob from 'glob';
 import { SubModuleOptions } from './interfaces';
-import {
-  InvalidI18nFolderException,
-  TemplateNotFoundException,
-} from './exceptions';
+import { TemplateNotFoundException } from './exceptions';
 
 @Injectable()
 export class HandlebarsService implements OnApplicationBootstrap {
@@ -34,6 +31,22 @@ export class HandlebarsService implements OnApplicationBootstrap {
         this.handlebars.registerHelper(helper.name, helper.fn);
       }
     }
+    _.set(
+      this.options,
+      'partialDirectories',
+      _.uniq(this.options.partialDirectories || []).map((directory) => {
+        if (!path.isAbsolute(directory)) {
+          return path.join(this.options.templateDirectory, directory);
+        }
+        return directory;
+      }),
+    );
+
+    _.set(
+      this.options,
+      'i18n.directories',
+      _.uniq(this.options.i18n?.directories || []),
+    );
   }
 
   async onApplicationBootstrap() {
@@ -68,8 +81,17 @@ export class HandlebarsService implements OnApplicationBootstrap {
     }
   }
 
+  private getKey(parsedFilePath: path.ParsedPath, separator: string): string {
+    const out: string[] = [];
+    if (parsedFilePath.dir) {
+      out.push(parsedFilePath.dir.replace(/[\/\\]+/g, separator));
+    }
+    out.push(parsedFilePath.name);
+    return out.join(separator);
+  }
+
   private async processI18n() {
-    if (this.options.i18n !== undefined && this.options.i18n.use) {
+    if (this.options.i18n && this.options.i18n.use) {
       this.debug('Configuring i18n');
       let i18nOptions = this.options.i18n;
       i18nOptions.directories!.map((directory) => {
@@ -81,33 +103,32 @@ export class HandlebarsService implements OnApplicationBootstrap {
 
       const resources: i18next.Resource = {};
 
-      const files = _.uniq(i18nOptions.directories)
-        .map((directory) => glob.sync(path.join(directory, '**', '*.json'), {}))
-        .flat();
-
-      for (const filePath of files) {
-        const pathInfo = path.parse(filePath);
-        const basePath = i18nOptions.directories!.find((d) =>
-          filePath.startsWith(d),
-        );
-        const r = new RegExp(`^${basePath}${path.sep}?`);
-        const locale = pathInfo.dir.replace(r, '');
-        if (locale === '') {
-          throw new InvalidI18nFolderException(pathInfo.dir);
+      for (const directory of i18nOptions.directories!) {
+        const languages = glob.sync(path.join(directory, '*', path.sep), {
+          dot: false,
+        });
+        for (const langDirPath of languages) {
+          const language = path.relative(directory, langDirPath);
+          this.debug(`Processing i18n resources for language: ${language}`);
+          const files = glob.sync(path.join(langDirPath, '**', '*.json'));
+          for (const file of files) {
+            const filePath = path.parse(path.relative(langDirPath, file));
+            const content = fs.readFileSync(file, 'utf8');
+            const key = this.getKey(filePath, '.');
+            const langPath = `${language}.default.${key}`;
+            _.set(resources, langPath, {
+              ..._.get(resources, langPath, {}),
+              ...JSON.parse(content),
+            });
+            this.debug(`Registering i18n resource: ${langPath} `);
+          }
         }
-        this.debug(
-          `Loading locale: ${locale}.${pathInfo.name} from file: ${filePath}`,
-        );
-        _.set(
-          resources,
-          `${locale}.default.${pathInfo.name}`,
-          JSON.parse(fs.readFileSync(filePath, 'utf8')),
-        );
       }
+
+      console.log(JSON.stringify(resources, null, 2));
 
       this.i18n = i18next.createInstance();
       await this.i18n.init({
-        fallbackLng: 'en',
         ...i18nOptions,
         defaultNS: 'default',
         resources,
@@ -134,59 +155,46 @@ export class HandlebarsService implements OnApplicationBootstrap {
 
   private processPartials() {
     const partialDirectories = this.options.partialDirectories;
-    if (
-      this.options.partialDirectories &&
-      Array.isArray(partialDirectories) &&
-      partialDirectories.length > 0
-    ) {
+    if (Array.isArray(partialDirectories) && partialDirectories.length > 0) {
       this.debug('Processing partials');
-      for (let [index, partialDirectory] of partialDirectories.entries()) {
-        if (!path.isAbsolute(partialDirectory)) {
-          partialDirectory = path.join(
-            this.options.templateDirectory,
-            partialDirectory,
-          );
-        }
-        this.options.partialDirectories[index] = partialDirectory;
+      for (let partialDirectory of partialDirectories) {
         this.debug(`Processing partials in directory: ${partialDirectory}`);
-        const partials = glob.sync(
-          path.join(partialDirectory, '**', '*.hbs'),
-          {},
-        );
-        for (const partialPath of partials) {
-          const pathInfo = path.parse(partialPath);
-          const partialName = pathInfo.name;
-          const partialContent = fs.readFileSync(partialPath, 'utf8');
-          this.debug(`Registering partial: ${partialName}`);
-          this.handlebars.registerPartial(partialName, partialContent);
+        const partials = glob.sync(path.join(partialDirectory, '**', '*.hbs'));
+        for (const file of partials) {
+          const filePath = path.parse(path.relative(partialDirectory, file));
+          const content = fs.readFileSync(file, 'utf8');
+          const key = this.getKey(filePath, '/');
+          this.debug(`Registering partial: ${key}`);
+          this.handlebars.registerPartial(key, content);
         }
       }
     }
   }
 
   private processTemplates() {
-    const templateDirectory = this.options.templateDirectory;
     this.debug('Processing templates');
     let ignoreFn = (p: glob.Path) => {
       if (!this.options.partialDirectories) return false;
       return this.options.partialDirectories.includes(p.path);
     };
-    const templates = glob.sync(path.join(templateDirectory, '**', '*.hbs'), {
-      ignore: {
-        ignored: ignoreFn,
-        childrenIgnored: ignoreFn,
-      },
-    });
 
-    for (const templatePath of templates) {
-      const pathInfo = path.parse(templatePath);
-      const templateName = pathInfo.name;
-      const templateContent = fs.readFileSync(templatePath, 'utf8');
-      this.debug(`Registering template: ${templateName}`);
-      this.templates.set(
-        templateName,
-        this.handlebars.compile(templateContent, this.options.templateOptions),
+    const templates = glob.sync(
+      path.join(this.options.templateDirectory, '**', '*.hbs'),
+      {
+        ignore: {
+          ignored: ignoreFn,
+          childrenIgnored: ignoreFn,
+        },
+      },
+    );
+    for (const file of templates) {
+      const filePath = path.parse(
+        path.relative(this.options.templateDirectory, file),
       );
+      const content = fs.readFileSync(file, 'utf8');
+      const key = path.join(filePath.dir, filePath.name);
+      this.debug(`Registering template: ${key}`);
+      this.templates.set(key, this.handlebars.compile(content));
     }
   }
 }
