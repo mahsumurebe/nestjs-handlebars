@@ -1,10 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { ApplicationModule } from '../src/app.module';
+import { ApplicationModule } from '../src/app-async.module';
 import { MailService } from '../src/modules/mail/mail.service';
 import { SmsService } from '../src/modules/sms/sms.service';
 
-describe('Handlebars', () => {
+describe('Handlebars Async', () => {
   let app: INestApplication;
   let mailService: MailService;
   let smsService: SmsService;
