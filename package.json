@@ -1,6 +1,6 @@
 {
   "name": "nestjs-handlebars",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "NestJS Handlebars module with i18n support",
   "main": "index.js",
   "types": "index.d.ts",
@@ -62,10 +62,10 @@
     "typescript": "5.4.5"
   },
   "peerDependencies": {
-    "@nestjs/common": "^8.0.0 || ^9.0.0 || ^10.0.0",
-    "@nestjs/core": "^8.0.0 || ^9.0.0 || ^10.0.0",
-    "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0"
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
   },
   "lint-staged": {
     "**/*.{ts,json}": []
